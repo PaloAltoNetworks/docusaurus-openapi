@@ -18,6 +18,7 @@ const sidebarOptions = Joi.object({
   sidebarCollapsible: Joi.boolean(),
   sidebarCollapsed: Joi.boolean(),
   sidebarGenerators: sidebarGenerators,
+  nested: Joi.boolean(),
 });
 
 const markdownGenerators = Joi.object({
