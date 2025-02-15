@@ -95,14 +95,37 @@ function Request({ item }: { item: ApiItem }) {
 
   const methods = useForm({ shouldFocusError: false });
 
+  const handleEventStream = async (res) => {
+    res.headers && dispatch(setHeaders(Object.fromEntries(res.headers)));
+    dispatch(setCode(res.status));
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let result = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      result += decoder.decode(value, { stream: true });
+      dispatch(setResponse(result));
+    }
+  };
+
+  const handleResponse = async (res) => {
+    dispatch(setResponse(await res.text()));
+    dispatch(setCode(res.status));
+    res.headers && dispatch(setHeaders(Object.fromEntries(res.headers)));
+  };
+
   const onSubmit = async (data) => {
     dispatch(setResponse("Fetching..."));
     try {
       await delay(1200);
       const res = await makeRequest(postmanRequest, proxy, body);
-      dispatch(setResponse(await res.text()));
-      dispatch(setCode(res.status));
-      res.headers && dispatch(setHeaders(Object.fromEntries(res.headers)));
+      if (res.headers.get("content-type")?.includes("text/event-stream")) {
+        await handleEventStream(res);
+      } else {
+        await handleResponse(res);
+      }
     } catch (e: any) {
       console.log(e);
       dispatch(setResponse("Connection failed"));
