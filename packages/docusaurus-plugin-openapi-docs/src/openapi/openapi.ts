@@ -191,7 +191,8 @@ function createItems(
 
       // Handle vendor JSON media types
       const bodyContent = operationObject.requestBody?.content;
-      if (bodyContent) {
+
+      if (bodyContent && Object.keys(bodyContent).length > 0) {
         const firstBodyContentKey = Object.keys(bodyContent)[0];
         if (firstBodyContentKey.endsWith("+json")) {
           const firstBody = bodyContent[firstBodyContentKey];
