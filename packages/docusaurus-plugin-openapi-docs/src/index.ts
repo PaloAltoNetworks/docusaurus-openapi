@@ -156,8 +156,34 @@ export default function pluginOpenAPIDocs(
         }
       }
 
+      if (sidebarOptions?.nested) {
+        let dirNames =
+          sidebarOptions.groupPathsBy === "tag"
+            ? tags[0].map((tag) => {
+                return tag.name;
+              })
+            : tagGroups.map((tagGroup) => {
+                return tagGroup.name;
+              });
+
+        dirNames.forEach((directory) => {
+          if (!fs.existsSync(`${outputDir}/${directory}`)) {
+            try {
+              fs.mkdirSync(`${outputDir}/${directory}`, { recursive: true });
+              console.log(
+                chalk.green(`Successfully created "${outputDir}/${directory}"`)
+              );
+            } catch (err) {
+              console.error(
+                chalk.red(`Failed to create "${outputDir}/${directory}"`),
+                chalk.yellow(err)
+              );
+            }
+          }
+        });
+      }
       // TODO: figure out better way to set default
-      if (Object.keys(sidebarOptions ?? {}).length > 0) {
+      else if (Object.keys(sidebarOptions ?? {}).length > 0) {
         const sidebarSlice = generateSidebarSlice(
           sidebarOptions!,
           options,
@@ -350,7 +376,20 @@ custom_edit_url: null
         const tagUtils = render(tagMdTemplate, item);
 
         if (item.type === "api") {
-          if (!fs.existsSync(`${outputDir}/${item.id}.api.mdx`)) {
+          let path = `${outputDir}/${item.id}.tag.mdx`;
+          if (sidebarOptions?.nested) {
+            path = `${outputDir}/${item.api.tags![0]}/${item.id}.api.mdx`;
+
+            if (sidebarOptions.groupPathsBy === "tagGroup") {
+              //get the tagGroup of the tag
+              tagGroups.forEach((tagGroup) => {
+                if (tagGroup.tags.includes(item.api.tags![0])) {
+                  path = `${outputDir}/${tagGroup.name}/${item.id}.api.mdx`;
+                }
+              });
+            }
+          }
+          if (!fs.existsSync(path)) {
             try {
               // kebabCase(arg) returns 0-length string when arg is undefined
               if (item.id.length === 0) {
@@ -358,15 +397,11 @@ custom_edit_url: null
                   "Operation must have summary or operationId defined"
                 );
               }
-              fs.writeFileSync(`${outputDir}/${item.id}.api.mdx`, view, "utf8");
-              console.log(
-                chalk.green(
-                  `Successfully created "${outputDir}/${item.id}.api.mdx"`
-                )
-              );
+              fs.writeFileSync(path, view, "utf8");
+              console.log(chalk.green(`Successfully created "${path}"`));
             } catch (err) {
               console.error(
-                chalk.red(`Failed to write "${outputDir}/${item.id}.api.mdx"`),
+                chalk.red(`Failed to write "${path}"`),
                 chalk.yellow(err)
               );
             }
@@ -401,23 +436,27 @@ custom_edit_url: null
             }
           }
         }
-
         if (item.type === "tag") {
-          if (!fs.existsSync(`${outputDir}/${item.id}.tag.mdx`)) {
+          let path = `${outputDir}/${item.id}.tag.mdx`;
+          if (sidebarOptions?.nested) {
+            path = `${outputDir}/${item.tag.name!}/index.mdx`;
+
+            if (sidebarOptions.groupPathsBy === "tagGroup") {
+              //get the tagGroup of the tag
+              tagGroups.forEach((tagGroup) => {
+                if (tagGroup.tags.includes(item.tag.name!)) {
+                  path = `${outputDir}/${tagGroup.name}/index.mdx`;
+                }
+              });
+            }
+          }
+          if (!fs.existsSync(path)) {
             try {
-              fs.writeFileSync(
-                `${outputDir}/${item.id}.tag.mdx`,
-                tagUtils,
-                "utf8"
-              );
-              console.log(
-                chalk.green(
-                  `Successfully created "${outputDir}/${item.id}.tag.mdx"`
-                )
-              );
+              fs.writeFileSync(path, tagUtils, "utf8");
+              console.log(chalk.green(`Successfully created "${path}"`));
             } catch (err) {
               console.error(
-                chalk.red(`Failed to write "${outputDir}/${item.id}.tag.mdx"`),
+                chalk.red(`Failed to write "${path}"`),
                 chalk.yellow(err)
               );
             }
@@ -479,15 +518,17 @@ custom_edit_url: null
   async function cleanApiDocs(options: APIOptions) {
     const { outputDir } = options;
     const apiDir = posixPath(path.join(siteDir, outputDir));
-    const apiMdxFiles = await Globby(["*.api.mdx", "*.info.mdx", "*.tag.mdx"], {
-      cwd: path.resolve(apiDir),
-      deep: 1,
-    });
+    const apiMdxFiles = await Globby(
+      ["**/*.api.mdx", "**/*.index.mdx", "**/*.info.mdx", "**/*.tag.mdx"],
+      {
+        cwd: path.resolve(apiDir),
+      }
+    );
     const sidebarFile = await Globby(["sidebar.js", "sidebar.ts"], {
       cwd: path.resolve(apiDir),
       deep: 1,
     });
-    apiMdxFiles.map((mdx) =>
+    apiMdxFiles.forEach((mdx) =>
       fs.unlink(`${apiDir}/${mdx}`, (err) => {
         if (err) {
           console.error(
@@ -512,7 +553,7 @@ custom_edit_url: null
       }
     }
 
-    sidebarFile.map((sidebar) =>
+    sidebarFile.forEach((sidebar) =>
       fs.unlink(`${apiDir}/${sidebar}`, (err) => {
         if (err) {
           console.error(

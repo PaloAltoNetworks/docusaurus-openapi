@@ -138,6 +138,7 @@ demo/**/*.api.mdx
 demo/**/*.info.mdx
 demo/**/*.tag.mdx
 demo/**/*.schema.mdx
+demo/**/index.mdx
 demo/**/sidebar.ts
 demo/**/versions.json
 
