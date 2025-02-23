@@ -315,10 +315,8 @@ custom_edit_url: null
       };
 
       loadedApi.map(async (item) => {
-        if (item.type === "info") {
-          if (downloadUrl) {
-            item.downloadUrl = downloadUrl;
-          }
+        if (downloadUrl) {
+          item.downloadUrl = downloadUrl;
         }
         const markdown = pageGeneratorByType[item.type](item as any);
         item.markdown = markdown;
